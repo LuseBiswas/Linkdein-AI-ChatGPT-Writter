@@ -30,34 +30,42 @@ export default defineContentScript({
       </div>
     `;
 
-    
     document.body.insertAdjacentHTML("beforeend", modalHtml);
 
-  
     const modal = document.getElementById("custom-modal") as HTMLDivElement;
-    const generateBtn = document.getElementById(
-      "generate-btn"
-    ) as HTMLButtonElement;
-    const insertBtn = document.getElementById(
-      "insert-btn"
-    ) as HTMLButtonElement;
+    const modalContent = document.getElementById("modal-content") as HTMLDivElement;
+    const generateBtn = document.getElementById("generate-btn") as HTMLButtonElement;
+    const insertBtn = document.getElementById("insert-btn") as HTMLButtonElement;
     const inputText = document.getElementById("input-text") as HTMLInputElement;
     const messagesDiv = document.getElementById("messages") as HTMLDivElement;
 
-    // Store the last generated message and reference to the parent element
     let lastGeneratedMessage = "";
     let parentElement: HTMLElement | null = null;
 
-    
+    // Event listener to close the modal when clicking outside the modal content
+modal.addEventListener("click", (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+
+  // Close the modal only if the click is outside the modal content
+  if (!modalContent.contains(target)) {
+    modal.style.display = "none"; // Close the modal
+  }
+});
+
+// Ensure clicks inside the modal content do not close the modal
+modalContent.addEventListener("click", (event: MouseEvent) => {
+  event.stopPropagation(); // Prevent bubbling to the outer modal
+});
+
+    // Click event to handle showing modal and other interactions
     document.addEventListener("click", (event: MouseEvent) => {
       const target = event.target as HTMLElement;
 
-      
+      // Check if the clicked element is a message form content editable
       if (
         target.matches(".msg-form__contenteditable") ||
         target.closest(".msg-form__contenteditable")
       ) {
-        
         parentElement =
           target.closest(".msg-form__container") ||
           target.closest(".msg-form__contenteditable");
@@ -66,7 +74,7 @@ export default defineContentScript({
           ".msg-form_msg-content-container"
         );
 
-        
+        // Ensure elements are valid before manipulating them
         if (parentElement && contentContainer) {
           contentContainer.classList.add(
             "msg-form_msg-content-container--is-active"
@@ -74,7 +82,7 @@ export default defineContentScript({
           parentElement.setAttribute("data-artdeco-is-focused", "true");
         }
 
-       
+        // Create and display the edit icon if it doesn't exist
         if (parentElement && !parentElement.querySelector(".edit-icon")) {
           parentElement.style.position = "relative";
 
@@ -91,7 +99,7 @@ export default defineContentScript({
           icon.style.zIndex = "1000";
           parentElement.appendChild(icon);
 
-          
+          // Event listener for the edit icon to show the modal
           icon.addEventListener("click", (e) => {
             e.stopPropagation();
             modal.style.display = "flex";
@@ -100,21 +108,24 @@ export default defineContentScript({
       }
     });
 
-   
     const generateMessage = () => {
+      // Sample message for generation (could be replaced with an actual API call)
       const messages = [
         "Thank you for the opportunity! If you have any more questions or if there's anything else I can help you with, feel free to ask.",
       ];
       return messages[0]; 
     };
 
-    // Main function to'Generate' button
+    // Event listener for the 'Generate' button
     generateBtn.addEventListener("click", (e) => {
       e.stopPropagation(); // Prevent bubbling up to the document
 
       // Get the user input
       const inputValue = inputText.value.trim();
-      if (!inputValue) return; // Exit if input is empty
+      if (!inputValue) {
+        alert("Please enter a prompt before generating."); // Alert if input is empty
+        return; // Exit if input is empty
+      }
 
       // Display the user's message in the messages div
       const userMessageDiv = document.createElement("div");
@@ -139,34 +150,43 @@ export default defineContentScript({
 
       // Simulate an API call with a timeout to generate a message
       setTimeout(() => {
-        lastGeneratedMessage = generateMessage(); // Get the generated message
-        const generatedMessageDiv = document.createElement("div");
-        generatedMessageDiv.textContent = lastGeneratedMessage;
-        Object.assign(generatedMessageDiv.style, {
-          backgroundColor: "#DBEAFE",
-          color: "#666D80",
-          borderRadius: "12px",
-          padding: "10px",
-          marginBottom: "5px",
-          textAlign: "left",
-          maxWidth: "80%",
-          alignSelf: "flex-start",
-          marginRight: "auto",
-        });
+        try {
+          lastGeneratedMessage = generateMessage(); // Get the generated message
+          const generatedMessageDiv = document.createElement("div");
+          generatedMessageDiv.textContent = lastGeneratedMessage;
+          Object.assign(generatedMessageDiv.style, {
+            backgroundColor: "#DBEAFE",
+            color: "#666D80",
+            borderRadius: "12px",
+            padding: "10px",
+            marginBottom: "5px",
+            textAlign: "left",
+            maxWidth: "80%",
+            alignSelf: "flex-start",
+            marginRight: "auto",
+          });
 
-        // Add generated message to the messages div
-        messagesDiv.appendChild(generatedMessageDiv);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to the bottom
+          // Add generated message to the messages div
+          messagesDiv.appendChild(generatedMessageDiv);
+          messagesDiv.scrollTop = messagesDiv.scrollHeight; // Scroll to the bottom
 
-        // Enable the generate button and change text to 'Regenerate'
-        generateBtn.disabled = false;
-        generateBtn.style.backgroundColor = "#007bff";
-        generateBtn.style.color = "white";
-        generateBtn.innerHTML = `<img src="${regenerateIcon}" alt="Regenerate" style="vertical-align: middle; margin-right: 5px; width: 16px; height: 16px"> <b>Regenerate</b>`;
+          // Enable the generate button and change text to 'Regenerate'
+          generateBtn.disabled = false;
+          generateBtn.style.backgroundColor = "#007bff";
+          generateBtn.style.color = "white";
+          generateBtn.innerHTML = `<img src="${regenerateIcon}" alt="Regenerate" style="vertical-align: middle; margin-right: 5px; width: 16px; height: 16px"> <b>Regenerate</b>`;
 
-        // Reset input field and show the insert button
-        inputText.value = "";
-        insertBtn.style.display = "inline-block";
+          // Reset input field and show the insert button
+          inputText.value = "";
+          insertBtn.style.display = "inline-block";
+        } catch (error) {
+          console.error("Error generating message:", error);
+          alert("An error occurred while generating the message. Please try again."); // Alert user in case of an error
+          // Reset button state in case of an error
+          generateBtn.disabled = false;
+          generateBtn.textContent = "Generate";
+          generateBtn.style.backgroundColor = "#007bff";
+        }
       }, 500);
     });
 
@@ -184,28 +204,29 @@ export default defineContentScript({
           parentElement.appendChild(existingParagraph);
         }
 
-       
-        existingParagraph.textContent = lastGeneratedMessage;
+        // Ensure existingParagraph is defined before setting text
+        if (existingParagraph) {
+          existingParagraph.textContent = lastGeneratedMessage;
+        }
 
-        
         const placeholder = parentElement.querySelector('.msg-form__placeholder');
         if (placeholder) {
            placeholder.innerHTML = ''; 
         }
 
         const sendButton = parentElement.querySelector('.msg-form__send-button');
-    if (sendButton) {
-      
-      sendButton.removeAttribute("disabled"); // Remove the disabled attribute
-    }
+        if (sendButton) {
+          sendButton.removeAttribute("disabled"); // Remove the disabled attribute
+        }
 
-        
         insertBtn.style.display = "none";
         modal.style.display = "none";
+      } else {
+        alert("No message available to insert."); // Alert if no message is generated
       }
     });
 
-    
+    // Add focus event listeners to input elements
     const inputElements = [inputText, generateBtn, insertBtn];
     inputElements.forEach((element) => {
       element.addEventListener("focus", () => {
@@ -215,16 +236,6 @@ export default defineContentScript({
       });
     });
 
-  
-    document.addEventListener("click", (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (
-        modal.style.display === "flex" &&
-        !modal.contains(target) &&
-        !target.classList.contains("edit-icon")
-      ) {
-        modal.style.display = "none";
-      }
-    });
+    
   },
 });
